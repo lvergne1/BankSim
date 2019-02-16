@@ -38,18 +38,15 @@ public class Bank {
 
     public void transfer(int from, int to, int amount) {
 
-        shouldTest();
-
-        decrementSafeThreadsCount();
+        testIfNeeded();
         accounts[from].withdraw(amount);
         accounts[to].deposit(amount);
-        incrementSafeThreadsCount();
     }
     
     public void incrementSafeThreadsCount(){
         safeThreadsCountLock.lock();
         try {
-            safeThreadsCount++;
+            if(++safeThreadsCount == numAccounts)
             allThreadsSafe.signal();
 
         } finally {
@@ -89,7 +86,7 @@ public class Bank {
         return accounts.length;
     }
 
-    public void shouldTest() {
+    public void testIfNeeded() {
         transactionCountLock.lock();
         try {
             if (++ntransacts % NTEST == 0) {
@@ -100,7 +97,6 @@ public class Bank {
                         allThreadsSafe.await();
                     }
                     test();
-                    System.out.printf("Number of transactions so far: %d\n", ntransacts);
                 } catch (InterruptedException ex) {
                     Logger.getLogger(Bank.class.getName()).log(Level.SEVERE, null, ex);
                 } finally {

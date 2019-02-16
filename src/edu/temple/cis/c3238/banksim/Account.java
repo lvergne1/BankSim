@@ -33,12 +33,11 @@ public class Account {
         lock.lock();
         try {
             while(amount > balance){
-                myBank.incrementSafeThreadsCount();
                 notEnoughMoney.await();
-                myBank.decrementSafeThreadsCount();
             }
+        myBank.decrementSafeThreadsCount();
         int currentBalance = balance;
-//      Thread.yield(); // Try to force collision
+     //   Thread.yield(); // Try to force collision
         int newBalance = currentBalance - amount;
         balance = newBalance;
         } catch (InterruptedException ex) {
@@ -53,9 +52,10 @@ public class Account {
         lock.lock();
         try{
         int currentBalance = balance;
-//        Thread.yield();   // Try to force collision
+       // Thread.yield();   // Try to force collision
         int newBalance = currentBalance + amount;
         balance = newBalance;
+        myBank.incrementSafeThreadsCount();
         notEnoughMoney.signal();
         }finally{
             lock.unlock();
