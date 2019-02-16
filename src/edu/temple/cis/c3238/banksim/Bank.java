@@ -1,5 +1,8 @@
 package edu.temple.cis.c3238.banksim;
 
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * @author Cay Horstmann
  * @author Modified by Paul Wolfgang
@@ -13,7 +16,10 @@ public class Bank {
     private long ntransacts = 0;
     private final int initialBalance;
     private final int numAccounts;
-
+    private final ReentrantLock transactionCountLock;
+    private final ReentrantLock safeThreadsCountLock;
+    private Condition allThreadsSafe;
+    private int safeThreadsCount;
     public Bank(int numAccounts, int initialBalance) {
         this.initialBalance = initialBalance;
         this.numAccounts = numAccounts;
@@ -22,14 +28,35 @@ public class Bank {
             accounts[i] = new Account(this, i, initialBalance);
         }
         ntransacts = 0;
+        safeThreadsCount = 10;
+        transactionCountLock = new ReentrantLock();
+        safeThreadsCountLock = new ReentrantLock();
+        allThreadsSafe = safeThreadsCountLock.newCondition();
     }
 
     public void transfer(int from, int to, int amount) {
 //        accounts[from].waitForAvailableFunds(amount);
+       
+        shouldTest();
+        
+        safeThreadsCountLock.lock();
+        try {
+            safeThreadsCount--;
+        } finally {
+            safeThreadsCountLock.unlock();
+        }
+    
         if (accounts[from].withdraw(amount)) {
             accounts[to].deposit(amount);
         }
-        if (shouldTest()) test();
+        
+        safeThreadsCountLock.lock();
+        try {
+            safeThreadsCount++;
+            
+        } finally {
+            safeThreadsCountLock.unlock();
+        }
     }
 
     public void test() {
@@ -56,8 +83,15 @@ public class Bank {
     }
     
     
-    public boolean shouldTest() {
-        return ++ntransacts % NTEST == 0;
+    public void shouldTest() {
+        transactionCountLock.lock();
+        try{
+        if(++ntransacts % NTEST == 0){
+            //WE MUST TEST
+        }
+        }finally{
+            transactionCountLock.unlock();
+        }
     }
 
 }
